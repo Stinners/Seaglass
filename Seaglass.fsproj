@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <Compile Include="src/Model.fs" />
+    <Compile Include="src/Utils.fs" />
+    <Compile Include="src/Help.fs" />
     <Compile Include="src/Note.fs" />
     <Compile Include="src/Program.fs" />
   </ItemGroup>

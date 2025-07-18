@@ -1,6 +1,7 @@
 ﻿namespace Seaglass
 
 open System
+open System.IO
 
 open Spectre.Console
 
@@ -8,19 +9,36 @@ open Model
 
 module Main =
 
+//================= Initialization =======================//
+
+    let initFileTree = 
+        let rootDir = Directory.GetCurrentDirectory()
+        { filesystem = Note.buildFSRecord rootDir
+          size = 40 
+          isOpen = true }
+
+    let initModel = 
+        { view = Note 
+          fileTree = initFileTree
+          shutdown = false }
+
+
+//================= Runtime =======================//
+
+
     let render model =
         match model.view with
-        | Note _ -> Note.render model
-        //| Help -> Help.render model
+        | Note -> Note.render model
+        | Help -> Help.render model
         //| Search -> Search.render model
         | _ -> Note.render model
 
+
     let update model (input : ConsoleKeyInfo) =
         match model.view with
-        | Note _ -> Note.update model input
-        //| Help -> Help.render model
-        //| Search -> Search.render model
-        | _ -> Note.update model input
+        | Note -> Note.update model input
+        | Help -> Help.update model input
+        | Search -> model
 
 
     let rec loop model (ctx: LiveDisplayContext) =
