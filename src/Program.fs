@@ -4,6 +4,7 @@ open System
 open System.IO
 
 open Spectre.Console
+open Serilog
 
 open Model
 
@@ -23,6 +24,14 @@ module Main =
         { view = Note 
           fileTree = initFileTree
           shutdown = false }
+
+    let initLogging () = 
+        Log.Logger <-
+            LoggerConfiguration()
+            |> _.MinimumLevel.Debug()
+            |> _.WriteTo.File("log.txt", rollingInterval = RollingInterval.Day)
+            |> _.CreateLogger()
+
 
 //================= Runtime =======================//
 
@@ -55,9 +64,15 @@ module Main =
 
     [<EntryPoint>]
     let main _args =
+        initLogging()
+
+        Log.Logger.Information " ======== Starting Seaglass ========="
+
         let model = initModel
         let initLayout = render model
         AnsiConsole.Live(initLayout).Start(loop model)
         AnsiConsole.Clear()
+
+        Log.Logger.Information " ======== Closing Seaglass =========="
 
         0
