@@ -9,6 +9,7 @@
     <Compile Include="src/Model.fs" />
     <Compile Include="src/Utils.fs" />
     <Compile Include="src/Help.fs" />
+    <Compile Include="src/Cursor.fs" />
     <Compile Include="src/Note.fs" />
     <Compile Include="src/Program.fs" />
   </ItemGroup>
@@ -18,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="dotenv.net" Version="4.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
   </ItemGroup>
 

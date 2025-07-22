@@ -12,16 +12,17 @@ module Main =
 //================= Initialization =======================//
 
     let initFileTree = 
-        let rootDir = Directory.GetCurrentDirectory()
-        { filesystem = Note.buildFSRecord rootDir
+        let files = Note.buildFSRecord (Directory.GetCurrentDirectory())
+        let filesystem = { files with root = Directory (expanded = true) }
+        { filesystem = filesystem
           size = 40 
-          isOpen = true }
+          isOpen = true 
+          isFocused = true }
 
     let initModel = 
         { view = Note 
           fileTree = initFileTree
           shutdown = false }
-
 
 //================= Runtime =======================//
 

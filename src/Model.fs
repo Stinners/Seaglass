@@ -23,7 +23,8 @@ module Model =
     type FileTree = 
         { filesystem: FSRecord
           size: int
-          isOpen: bool }
+          isOpen: bool 
+          isFocused: bool }
 
 
     type Model = 
