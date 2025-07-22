@@ -2,6 +2,7 @@ namespace Seaglass
 
 open Spectre.Console
 open Spectre.Console.Rendering
+open Serilog
 
 open System
 open System.IO
@@ -26,10 +27,12 @@ module Note =
     //======================= Update ============================//
     
     let updateFocusUp filetree =
+        Log.Information "updateFocusUp"
         let newFileState = Cursor.moveFocusUp filetree.filesystem |> Cursor.focus 
         { filetree with filesystem = newFileState }
 
     let updateFocusDown filetree =
+        Log.Information "updateFocusDown"
         let newFileState = Cursor.moveFocusDown filetree.filesystem |> Cursor.focus 
         { filetree with filesystem = newFileState }
 
@@ -85,7 +88,7 @@ module Note =
             $"{symbol} {name}"
 
     let fsRecordFocus (record : FSRecord) name = 
-        if record.isFocused then $"[bold]{name}[/]"
+        if record.isFocused then $"[green]{name}[/]"
         else name
 
     let fsRecordMarkup record =

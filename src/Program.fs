@@ -66,13 +66,13 @@ module Main =
     let main _args =
         initLogging()
 
-        Log.Logger.Information " ======== Starting Seaglass ========="
+        Log.Information " ======== Starting Seaglass ========="
 
         let model = initModel
         let initLayout = render model
         AnsiConsole.Live(initLayout).Start(loop model)
         AnsiConsole.Clear()
 
-        Log.Logger.Information " ======== Closing Seaglass =========="
+        Log.Information " ======== Closing Seaglass =========="
 
         0

@@ -74,7 +74,8 @@ module Cursor  =
                         updateChildAt (idx+1) updatedNextChild firstUpdate
 
             // Else we need to enter the directory - focus its' first child
-            | None -> focusFirstChild record
+            | None -> 
+                focusFirstChild record
 
 
     // This will only be called on an unfocused element when we're entering a new 
@@ -104,9 +105,15 @@ module Cursor  =
 
                     // Else we recurse to the next child up
                     else 
-                        let updatedNextChild = moveFocusUp firstUpdate.contents[idx-1]
-                        updateChildAt (idx-1) updatedNextChild firstUpdate
+                        let nextChild = firstUpdate.contents[idx-1]
+                        if isAtomic nextChild then 
+                            updateChildAt (idx-1) (focus nextChild) firstUpdate
 
+                        else 
+                            let updatedNextChild = moveFocusUp firstUpdate.contents[idx-1]
+                            updateChildAt (idx-1) updatedNextChild firstUpdate
+
+            // Note this cases problems with the root, which is always focused
             | None -> 
                 // If the record is focused then we're leaving it and going up 
                 if record.isFocused then unfocus record 
