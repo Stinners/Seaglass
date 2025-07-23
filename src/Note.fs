@@ -57,9 +57,12 @@ module Note =
         (input.Modifiers &&& modifier) = ConsoleModifiers.Control
 
 
-    let openFile (model : Model) (file :FSRecord) : Model = 
-        let filename = Utils.fsRecordName file |> Path.GetFileNameWithoutExtension 
-        { model with note.name = filename }
+    let openFile model file = 
+        let filename = Utils.fsRecordName file
+        let headerName = filename |> Path.GetFileNameWithoutExtension
+        let headerName' = if headerName = "" then filename else headerName
+        let fileText = File.ReadAllText file.path
+        { model with note.name = headerName'; note.path = file.path; note.text = fileText }
 
     let selectFile (model : Model) = 
         let filesystem = model.fileTree.filesystem
@@ -145,12 +148,20 @@ module Note =
     
         layout.Update(panel)
 
+    let renderNoteContents model = 
+        let note = model.note 
+        if note.name = "" then 
+            Markup("Note Placeholder") |> Align.Center
+        else 
+            note.text |> Markup.Escape |> Markup |> Align.Left
+
+
     let renderNote (model : Model) (layout : Layout) : Layout = 
-        let panel = Panel(
-            Align.Center(Markup("Note Placeholder")),
+        let contents = renderNoteContents model
+        let panel = Panel(contents,
             Expand = true,
             Header = PanelHeader(model.note.name),
-            Padding = Padding(1,1,1,1),
+            Padding = Padding(1,1,3,1),
             Border = Styles.border (not model.fileTree.isFocused)
         )
 

@@ -28,7 +28,9 @@ module Model =
 
 
     type OpenNote = 
-        { name: string } 
+        { name: string
+          path: string 
+          text: string } 
 
 
     type Model = 

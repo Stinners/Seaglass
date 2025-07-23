@@ -10,5 +10,5 @@ module Utils =
         try Some(Seq.findIndex predicate source) with | _ -> None
 
     
-    let fsRecordName record = Path.GetFileName record.path
+    let fsRecordName (record : FSRecord) = Path.GetFileName record.path
 

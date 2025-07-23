@@ -21,7 +21,9 @@ module Main =
           isFocused = true }
 
     let initNote = 
-        { name = "" }
+        { name = ""
+          path = ""
+          text = "" }
 
     let initModel = 
         { view = Note 
