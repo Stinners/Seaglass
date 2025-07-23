@@ -43,13 +43,32 @@ module Note =
         let newSize = Math.Clamp(model.fileTree.size + amount, minSize, maxSize)
         { model with fileTree.size = newSize }
 
+    let toggleFiletreeFocus model = 
+        { model with fileTree.isFocused = not model.fileTree.isFocused }
+
 
     let toggleFileTree model =
-        {model with fileTree.isOpen = not model.fileTree.isOpen }
+        let isOpen = not model.fileTree.isOpen
+        let isFocused = if not isOpen then false else model.fileTree.isFocused 
+        {model with fileTree.isOpen = isOpen; fileTree.isFocused = isFocused }
 
 
     let hadModifier (input : ConsoleKeyInfo) (modifier : ConsoleModifiers) =
         (input.Modifiers &&& modifier) = ConsoleModifiers.Control
+
+
+    let openFile (model : Model) (file :FSRecord) : Model = 
+        let filename = Utils.fsRecordName file |> Path.GetFileNameWithoutExtension 
+        { model with note.name = filename }
+
+    let selectFile (model : Model) = 
+        let filesystem = model.fileTree.filesystem
+        let focused = Cursor.focusedRecord filesystem
+
+        if focused.root.IsFile then 
+            openFile model focused 
+        else 
+            { model with fileTree.filesystem = Cursor.toggleExpand filesystem }
 
 
     let update (model : Model) (input : ConsoleKeyInfo) =
@@ -72,13 +91,14 @@ module Note =
         | ConsoleKey.LeftArrow when control && filesVisible -> updateFileTreeSize model -10
         | ConsoleKey.RightArrow when control && filesVisible -> updateFileTreeSize model 10
         | ConsoleKey.F when control -> toggleFileTree model
+        | ConsoleKey.Tab when filesVisible -> toggleFiletreeFocus model 
         | ConsoleKey.Q -> { model with shutdown = true }
         | ConsoleKey.H -> { model with view = Help }
+        | ConsoleKey.Enter -> selectFile model
         | _ -> model
 
     //======================= Render ============================//
 
-    let fsRecordName record = Path.GetFileName record.path
 
     let fsRecordAddEmoji record name = 
         match record.root with 
@@ -93,12 +113,14 @@ module Note =
 
     let fsRecordMarkup record =
         record 
-        |> fsRecordName
+        |> Utils.fsRecordName
         |> fsRecordFocus record
         |> fsRecordAddEmoji record
         |> Markup
 
-    let renderFileTree (record : FSRecord) (layout : Layout) =
+
+    let renderFileTree (filetree : FileTree) (layout : Layout) =
+        let record = filetree.filesystem
 
         let rec renderNode (tree : IHasTreeNodes) (record : FSRecord) =
             let displayName = fsRecordMarkup record
@@ -111,36 +133,38 @@ module Note =
                 else
                     tree.AddNode displayName |> ignore
 
-        let root = Tree(fsRecordName record)
+        let root = Tree(Utils.fsRecordName record)
         Seq.iter (renderNode root) record.contents
 
         let panel = Panel(
             root,
             Expand = true,
-            Padding = Padding(0,0,0,2)
+            Padding = Padding(0,0,0,2),
+            Border = Styles.border filetree.isFocused
         )
     
         layout.Update(panel)
 
-    let renderNote _model (layout : Layout) : Layout = 
+    let renderNote (model : Model) (layout : Layout) : Layout = 
         let panel = Panel(
             Align.Center(Markup("Note Placeholder")),
             Expand = true,
-            Header = PanelHeader("Note"),
-            Padding = Padding(1,1,1,1)
+            Header = PanelHeader(model.note.name),
+            Padding = Padding(1,1,1,1),
+            Border = Styles.border (not model.fileTree.isFocused)
         )
 
         layout.Update(panel)
         
 
 
-    let render model : IRenderable =
+    let render (model : Model) : IRenderable =
         let notePane = Layout("Note") |> renderNote model
         let fileTreePane =
             if model.fileTree.isOpen then
                 Layout("Files")
                 |> _.Visible()
-                |> renderFileTree model.fileTree.filesystem
+                |> renderFileTree model.fileTree
             else
                 Layout("Files").Invisible()
 

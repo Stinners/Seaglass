@@ -35,13 +35,13 @@ module Cursor  =
 
 
     let rec private focusLastChild record = 
-        // If the record isn't focused then we need to enter it at it's last child
-        // If it's non-atomic we need to recurse to find it's last child
         let lastIdx = record.contents.Length - 1 
         let lastChild = record.contents[lastIdx]
         let updatedChild = if isAtomic lastChild then focus lastChild
                            else focusLastChild lastChild
-        updateChildAt lastIdx updatedChild record
+        record 
+        |> focus
+        |> updateChildAt lastIdx updatedChild
 
     // We assume that this is always called on a focused element
     let rec moveFocusDown record = 
@@ -119,3 +119,22 @@ module Cursor  =
                 if record.isFocused then unfocus record 
                 // Else we enter the record at it's last child
                 else focusLastChild record
+
+
+    let rec toggleExpand (record : FSRecord) : FSRecord  = 
+        match record.root with 
+        | File -> record 
+        | Directory expanded -> 
+            match focusedChild record with 
+            | None -> { record with root = Directory (expanded = not expanded) }
+            | Some (idx, child) -> 
+                let updatedChild = toggleExpand child 
+                updateChildAt idx updatedChild record
+
+    let rec focusedRecord (record : FSRecord) : FSRecord = 
+        match record.root with 
+        | File -> record
+        | Directory _ -> 
+            match focusedChild record with 
+            | None -> record
+            | Some (_, child) -> focusedRecord child

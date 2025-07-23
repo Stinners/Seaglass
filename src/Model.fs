@@ -27,7 +27,12 @@ module Model =
           isFocused: bool }
 
 
+    type OpenNote = 
+        { name: string } 
+
+
     type Model = 
         { fileTree: FileTree
           view: ViewType
-          shutdown: bool }
+          shutdown: bool 
+          note: OpenNote }

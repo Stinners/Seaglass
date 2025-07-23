@@ -20,10 +20,14 @@ module Main =
           isOpen = true 
           isFocused = true }
 
+    let initNote = 
+        { name = "" }
+
     let initModel = 
         { view = Note 
           fileTree = initFileTree
-          shutdown = false }
+          shutdown = false
+          note =  initNote }
 
     let initLogging () = 
         Log.Logger <-
@@ -36,7 +40,7 @@ module Main =
 //================= Runtime =======================//
 
 
-    let render model =
+    let render (model : Model) =
         match model.view with
         | Note -> Note.render model
         | Help -> Help.render model
