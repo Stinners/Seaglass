@@ -101,6 +101,28 @@ module Note =
         | _ -> model
 
     //======================= Render ============================//
+    
+    //======================= Handling Sizes ============================//
+    
+    let columns () = Console.BufferWidth
+    let rows () = Console.BufferHeight
+    
+    let fileTreeSize model = 
+        let fileTreeFraction = float model.fileTree.size / 100.0
+        let nRows = fileTreeFraction * float (columns())
+        Math.Floor nRows |> int
+
+    let noteSize model = 
+        if model.fileTree.isOpen then 
+            columns() - fileTreeSize model 
+        else 
+            columns()
+
+    let lineLength model = 
+        let availibleWidth = noteSize model - 2 * Styles.TextPadding - 2
+        Math.Min(availibleWidth, Styles.MaxTextWidth)
+
+    //====================================================================//
 
 
     let fsRecordAddEmoji record name = 
@@ -122,65 +144,81 @@ module Note =
         |> Markup
 
 
-    let renderFileTree (filetree : FileTree) (layout : Layout) =
+    let rec renderNode (tree : IHasTreeNodes) (record : FSRecord) =
+        let displayName = fsRecordMarkup record
+        match record.root with
+        | File -> tree.AddNode displayName |> ignore
+        | Directory expanded ->
+            if expanded then
+                let node = tree.AddNode displayName
+                Seq.iter (renderNode node) record.contents
+            else
+                tree.AddNode displayName |> ignore
+
+    let renderFileTree (model : Model) (layout : Layout) =
+        let filetree = model.fileTree
         let record = filetree.filesystem
+        if filetree.isOpen then 
+            let root = Tree(Utils.fsRecordName record)
+            Seq.iter (renderNode root) record.contents
 
-        let rec renderNode (tree : IHasTreeNodes) (record : FSRecord) =
-            let displayName = fsRecordMarkup record
-            match record.root with
-            | File -> tree.AddNode displayName |> ignore
-            | Directory (expanded) ->
-                if expanded then
-                    let node = tree.AddNode displayName
-                    Seq.iter (renderNode node) record.contents
-                else
-                    tree.AddNode displayName |> ignore
-
-        let root = Tree(Utils.fsRecordName record)
-        Seq.iter (renderNode root) record.contents
-
-        let panel = Panel(
-            root,
-            Expand = true,
-            Padding = Padding(0,0,0,2),
-            Border = Styles.border filetree.isFocused
-        )
-    
-        layout.Update(panel)
+            let panel = Panel(
+                root,
+                Padding = Padding(0,0,0,2),
+                Border = Styles.border filetree.isFocused,
+                Height = rows()
+            )
+        
+            layout.Update(panel).Size(fileTreeSize model)
+        else 
+            layout.Invisible() 
 
     let renderNoteContents model = 
         let note = model.note 
-        if note.name = "" then 
-            Markup("Note Placeholder") |> Align.Center
-        else 
-            note.text |> Markup.Escape |> Markup |> Align.Left
+        let text = if note.name = "" then 
+                       Markup("Note Placeholder") |> Align.Center
+                   else 
+                       note.text |> Markup.Escape |> Markup |> Align.Left
+        text 
+
+    //==================== Handling Widths ============================//
+
+    let MaxTextWitdth = 100
+
+    let getTextWidth layoutWidth = Math.Min(MaxTextWitdth, layoutWidth)
+    let getTextPadding layoutWidth = 
+        let textWidth = getTextWidth layoutWidth
+
+        Log.Information $"Layout width is: {layoutWidth}"
+        Log.Information $"textWidth is: {textWidth}"
+        (layoutWidth - textWidth) / 2 
 
 
     let renderNote (model : Model) (layout : Layout) : Layout = 
         let contents = renderNoteContents model
-        let panel = Panel(contents,
-            Expand = true,
+        let textWidth = lineLength model 
+
+        // We need all this to make controling the text width actually work
+        let textArea = Layout("TextArea") |> _.Update(contents) |> _.Size(textWidth)
+        let textLayout = Layout("TextContainer").SplitColumns([|textArea|])
+
+        let panel = Panel(
+            Align.Center(textLayout),
             Header = PanelHeader(model.note.name),
-            Padding = Padding(1,1,3,1),
-            Border = Styles.border (not model.fileTree.isFocused)
+            Padding = Padding(2,1,2,1),
+            Border = Styles.border (not model.fileTree.isFocused),
+            Height = rows()
         )
 
-        layout.Update(panel)
+        layout.Update(panel).Size(noteSize model)
         
 
 
     let render (model : Model) : IRenderable =
-        let notePane = Layout("Note") |> renderNote model
-        let fileTreePane =
-            if model.fileTree.isOpen then
-                Layout("Files")
-                |> _.Visible()
-                |> renderFileTree model.fileTree
-            else
-                Layout("Files").Invisible()
+        let notePane = renderNote model (Layout("Note"))
+        let filetreePane = renderFileTree model (Layout("Filetree"))
 
-        let fileTreeSize = model.fileTree.size
         Layout("SeaGlass").SplitColumns([|
-            fileTreePane.Ratio(fileTreeSize);
-            notePane.Ratio(100 - fileTreeSize)|]
-        )
+            filetreePane
+            notePane;
+        |])

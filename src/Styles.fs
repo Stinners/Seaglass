@@ -8,3 +8,6 @@ module Styles =
     let FocusBorder = BoxBorder.Heavy
 
     let border isFocused = if isFocused then FocusBorder else DefaultBorder
+
+    let MaxTextWidth = 80 
+    let TextPadding = 2
