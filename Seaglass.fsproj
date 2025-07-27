@@ -11,6 +11,7 @@
     <Compile Include="src/Utils.fs" />
     <Compile Include="src/Help.fs" />
     <Compile Include="src/Cursor.fs" />
+    <Compile Include="src/Markdown.fs" />
     <Compile Include="src/Note.fs" />
     <Compile Include="src/Program.fs" />
   </ItemGroup>
@@ -21,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="dotenv.net" Version="4.0.0" />
+    <PackageReference Include="markdig" Version="0.41.3" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />

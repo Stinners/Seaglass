@@ -11,3 +11,13 @@ module Styles =
 
     let MaxTextWidth = 80 
     let TextPadding = 2
+
+    type MarkdownNode = 
+        | Header 
+        | Paragraph 
+
+    let markdownMarkup nodeType = 
+        match nodeType with
+        | Header -> "[bold green]"
+        | Paragraph -> ""
+

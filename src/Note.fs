@@ -54,7 +54,7 @@ module Note =
 
 
     let hadModifier (input : ConsoleKeyInfo) (modifier : ConsoleModifiers) =
-        (input.Modifiers &&& modifier) = ConsoleModifiers.Control
+        (input.Modifiers &&& modifier) = modifier
 
 
     let openFile model file = 
@@ -80,8 +80,10 @@ module Note =
         let filesVisible = model.fileTree.isOpen
         let control = hadModifier input ConsoleModifiers.Control
         //let alt = hadModifier input ConsoleModifiers.Alt
-        //let shift = hadModifier input ConsoleModifiers.Shift
+        let shift = hadModifier input ConsoleModifiers.Shift
+
         
+        Log.Debug($"Note Input: {input.Key} | control: {control} | shift: {shift}") 
 
         match input.Key with
         // Fire only if the tree is focused
@@ -91,9 +93,9 @@ module Note =
         // Fire only if the note is focused
 
         // Fire regardless of filetree focus
-        | ConsoleKey.LeftArrow when control && filesVisible -> updateFileTreeSize model -10
-        | ConsoleKey.RightArrow when control && filesVisible -> updateFileTreeSize model 10
-        | ConsoleKey.F when control -> toggleFileTree model
+        | ConsoleKey.LeftArrow when shift && filesVisible -> updateFileTreeSize model -10
+        | ConsoleKey.RightArrow when shift && filesVisible -> updateFileTreeSize model 10
+        | ConsoleKey.F when shift -> toggleFileTree model
         | ConsoleKey.Tab when filesVisible -> toggleFiletreeFocus model 
         | ConsoleKey.Q -> { model with shutdown = true }
         | ConsoleKey.H -> { model with view = Help }
@@ -102,7 +104,7 @@ module Note =
 
     //======================= Render ============================//
     
-    //======================= Handling Sizes ============================//
+    //======================= Metric Functions ============================//
     
     let columns () = Console.BufferWidth
     let rows () = Console.BufferHeight
@@ -118,6 +120,8 @@ module Note =
         else 
             columns()
 
+    // Note the actually availible space for characters may be 2 columns 
+    // narrower than this - once the borders are acounted for
     let lineLength model = 
         let availibleWidth = noteSize model - 2 * Styles.TextPadding - 2
         Math.Min(availibleWidth, Styles.MaxTextWidth)
@@ -173,13 +177,18 @@ module Note =
         else 
             layout.Invisible() 
 
+    let isMarkdownFile note = (Path.GetExtension note.path) = ".md"
+
     let renderNoteContents model = 
         let note = model.note 
-        let text = if note.name = "" then 
-                       Markup("Note Placeholder") |> Align.Center
-                   else 
-                       note.text |> Markup.Escape |> Markup |> Align.Left
-        text 
+
+        if note.name = "" then 
+           Markup("Note Placeholder") |> Align.Center
+        else if isMarkdownFile note then 
+           note.text |> Markup.Escape |> Markdown.parseMarkdown |> Markup |> Align.Left
+        else 
+            Log.Debug($"Not Markdown | {Path.GetExtension note.path} | {note.path}")
+            note.text |> Markup.Escape |> Markup |> Align.Left
 
     //==================== Handling Widths ============================//
 
