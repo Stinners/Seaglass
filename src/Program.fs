@@ -23,7 +23,8 @@ module Main =
     let initNote = 
         { name = ""
           path = ""
-          text = "" }
+          text = [||] 
+          scroll = 0 }
 
     let initModel = 
         { view = Note 

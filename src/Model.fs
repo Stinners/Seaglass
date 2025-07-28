@@ -30,7 +30,8 @@ module Model =
     type OpenNote = 
         { name: string
           path: string 
-          text: string } 
+          text: string array
+          scroll: int }
 
 
     type Model = 

@@ -24,6 +24,30 @@ module Note =
               contents = contents
               isFocused = false }
 
+    //======================= Metric Functions ============================//
+    
+    let columns () = Console.BufferWidth
+    let rows () = Console.BufferHeight
+    
+    let fileTreeSize model = 
+        let fileTreeFraction = float model.fileTree.size / 100.0
+        let nRows = fileTreeFraction * float (columns())
+        Math.Floor nRows |> int
+
+    let noteSize model = 
+        if model.fileTree.isOpen then 
+            columns() - fileTreeSize model 
+        else 
+            columns()
+
+    // Note the actually availible space for characters may be 2 columns 
+    // narrower than this - once the borders are acounted for
+    let lineLength model = 
+        let availibleWidth = noteSize model - 2 * Styles.TextPadding - 2
+        Math.Min(availibleWidth, Styles.MaxTextWidth)
+
+    let characterSpace model = noteSize model * (rows() - 6)
+
     //======================= Update ============================//
     
     let updateFocusUp filetree =
@@ -56,13 +80,30 @@ module Note =
     let hadModifier (input : ConsoleKeyInfo) (modifier : ConsoleModifiers) =
         (input.Modifiers &&& modifier) = modifier
 
+    let isMarkdownFile (path : string) = (Path.GetExtension path) = ".md"
+
+    let getNoteText (file : FSRecord) = 
+        let text = File.ReadAllText file.path |> Markup.Escape
+        if isMarkdownFile file.path then 
+            text |> Markdown.parseMarkdown 
+        else 
+            [| text |]
+
+    let getNoteHeader (file : FSRecord) = 
+        let name = Utils.fsRecordName file
+        match Path.GetFileNameWithoutExtension name with
+        | "" -> name
+        | noExtension -> noExtension
+
 
     let openFile model file = 
-        let filename = Utils.fsRecordName file
-        let headerName = filename |> Path.GetFileNameWithoutExtension
-        let headerName' = if headerName = "" then filename else headerName
-        let fileText = File.ReadAllText file.path
-        { model with note.name = headerName'; note.path = file.path; note.text = fileText }
+        let note = { model.note with 
+                        name = getNoteHeader file
+                        path = file.path
+                        text = getNoteText file
+                        scroll = 0 }
+        { model with note = note}
+
 
     let selectFile (model : Model) = 
         let filesystem = model.fileTree.filesystem
@@ -73,6 +114,21 @@ module Note =
         else 
             { model with fileTree.filesystem = Cursor.toggleExpand filesystem }
 
+    let getScrolledBlocks (model : Model) = model.note.text[model.note.scroll..] 
+
+
+    let updateScroll (model : Model) (step : int) = 
+        // Don't allow scroll to make invalid values
+        let nBlocks = Math.Max(model.note.text.Length - 1, 0)
+        let newScroll = Math.Clamp(
+            model.note.scroll + step,
+            min = 0,
+            max = nBlocks
+        )
+
+        // TODO: prevet scrolling past the end of the display 
+        Log.Debug($"Updaing scroll from {model.note.scroll} to {newScroll}")
+        { model with note.scroll = newScroll }
 
     let update (model : Model) (input : ConsoleKeyInfo) =
 
@@ -91,6 +147,8 @@ module Note =
         | ConsoleKey.DownArrow when files -> { model with fileTree = updateFocusDown model.fileTree }
 
         // Fire only if the note is focused
+        | ConsoleKey.UpArrow when not files -> updateScroll model -1 
+        | ConsoleKey.DownArrow when not files -> updateScroll model 1
 
         // Fire regardless of filetree focus
         | ConsoleKey.LeftArrow when shift && filesVisible -> updateFileTreeSize model -10
@@ -104,28 +162,6 @@ module Note =
 
     //======================= Render ============================//
     
-    //======================= Metric Functions ============================//
-    
-    let columns () = Console.BufferWidth
-    let rows () = Console.BufferHeight
-    
-    let fileTreeSize model = 
-        let fileTreeFraction = float model.fileTree.size / 100.0
-        let nRows = fileTreeFraction * float (columns())
-        Math.Floor nRows |> int
-
-    let noteSize model = 
-        if model.fileTree.isOpen then 
-            columns() - fileTreeSize model 
-        else 
-            columns()
-
-    // Note the actually availible space for characters may be 2 columns 
-    // narrower than this - once the borders are acounted for
-    let lineLength model = 
-        let availibleWidth = noteSize model - 2 * Styles.TextPadding - 2
-        Math.Min(availibleWidth, Styles.MaxTextWidth)
-
     //====================================================================//
 
 
@@ -168,7 +204,7 @@ module Note =
 
             let panel = Panel(
                 root,
-                Padding = Padding(0,0,0,2),
+                Padding = Padding(0,0,0,4),
                 Border = Styles.border filetree.isFocused,
                 Height = rows()
             )
@@ -177,18 +213,20 @@ module Note =
         else 
             layout.Invisible() 
 
-    let isMarkdownFile note = (Path.GetExtension note.path) = ".md"
+    let joinBlocks (blocks : array<string>) = Array.fold (fun state block -> state + "\n\n" + block) "" blocks
 
+    // We want to avoid having to do this every time we re-render the page 
+    // and only do it when a file is opened
     let renderNoteContents model = 
         let note = model.note 
 
         if note.name = "" then 
            Markup("Note Placeholder") |> Align.Center
-        else if isMarkdownFile note then 
-           note.text |> Markup.Escape |> Markdown.parseMarkdown |> Markup |> Align.Left
         else 
-            Log.Debug($"Not Markdown | {Path.GetExtension note.path} | {note.path}")
-            note.text |> Markup.Escape |> Markup |> Align.Left
+           note.text[note.scroll..] 
+            |> joinBlocks
+            |> Markup 
+            |> Align.Left
 
     //==================== Handling Widths ============================//
 
@@ -214,7 +252,7 @@ module Note =
         let panel = Panel(
             Align.Center(textLayout),
             Header = PanelHeader(model.note.name),
-            Padding = Padding(2,1,2,1),
+            Padding = Padding(2,0,2,1),
             Border = Styles.border (not model.fileTree.isFocused),
             Height = rows()
         )
