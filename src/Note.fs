@@ -82,9 +82,9 @@ module Note =
 
     let isMarkdownFile (path : string) = (Path.GetExtension path) = ".md"
 
-    let getNoteText (file : FSRecord) = 
-        let text = File.ReadAllText file.path |> Markup.Escape
-        if isMarkdownFile file.path then 
+    let getNoteText (filepath : string) = 
+        let text = File.ReadAllText filepath |> Markup.Escape
+        if isMarkdownFile filepath then 
             text |> Markdown.parseMarkdown 
         else 
             [| text |]
@@ -100,7 +100,7 @@ module Note =
         let note = { model.note with 
                         name = getNoteHeader file
                         path = file.path
-                        text = getNoteText file
+                        text = getNoteText file.path
                         scroll = 0 }
         { model with note = note}
 
@@ -133,6 +133,8 @@ module Note =
     let update (model : Model) (input : ConsoleKeyInfo) =
 
         let files = model.fileTree.isFocused
+        let note = not files
+
         let filesVisible = model.fileTree.isOpen
         let control = hadModifier input ConsoleModifiers.Control
         //let alt = hadModifier input ConsoleModifiers.Alt
@@ -147,8 +149,13 @@ module Note =
         | ConsoleKey.DownArrow when files -> { model with fileTree = updateFocusDown model.fileTree }
 
         // Fire only if the note is focused
-        | ConsoleKey.UpArrow when not files -> updateScroll model -1 
-        | ConsoleKey.DownArrow when not files -> updateScroll model 1
+        | ConsoleKey.UpArrow when note -> updateScroll model -1 
+        | ConsoleKey.DownArrow when note -> updateScroll model 1
+
+        | ConsoleKey.E when not note ->
+            if File.Exists model.note.path then 
+                { model with command = Some(Editor) }
+            else model 
 
         // Fire regardless of filetree focus
         | ConsoleKey.LeftArrow when shift && filesVisible -> updateFileTreeSize model -10
@@ -215,8 +222,8 @@ module Note =
 
     let joinBlocks (blocks : array<string>) = Array.fold (fun state block -> state + "\n\n" + block) "" blocks
 
-    // We want to avoid having to do this every time we re-render the page 
-    // and only do it when a file is opened
+
+    // TODO make sure we only parse and render the markdown when we need to
     let renderNoteContents model = 
         let note = model.note 
 

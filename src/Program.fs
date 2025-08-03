@@ -30,7 +30,8 @@ module Main =
         { view = Note 
           fileTree = initFileTree
           shutdown = false
-          note =  initNote }
+          note =  initNote 
+          command = None }
 
     let initLogging () = 
         Log.Logger <-
@@ -58,16 +59,38 @@ module Main =
         | Search -> model
 
 
-    let rec loop model (ctx: LiveDisplayContext) =
-        let layout = render model
-        ctx.UpdateTarget layout
+    // Properties which we want to be true of the model at the start of every loop 
+    let reset model =
+        { model with command = None }
+    
+
+    let handleCommand model = 
+        match model.command with 
+        | None -> model   // Shutdown 
+        | Some(Editor) -> 
+            Editor.launchEditor model
+
+
+    let rec renderLoop oldModel =
+        let layout = render oldModel
+        AnsiConsole.Write(layout)
 
         let input = Console.ReadKey(true)
+        let newModel = update oldModel input |> handleCommand
 
-        let newModel = update model input
+        if not newModel.shutdown then 
+            renderLoop (reset newModel)
+        else 
+            AnsiConsole.Clear()
 
-        if not newModel.shutdown then
-            loop newModel ctx
+        (*
+        if not newModel.shutdown && Option.isNone model.command then
+            renderLoop newModel ctx
+        else 
+            Log.Information "Breaking render loop"
+        *)
+
+
 
     [<EntryPoint>]
     let main _args =
@@ -76,8 +99,7 @@ module Main =
         Log.Information " ======== Starting Seaglass ========="
 
         let model = initModel
-        let initLayout = render model
-        AnsiConsole.Live(initLayout).Start(loop model)
+        renderLoop model
         AnsiConsole.Clear()
 
         Log.Information " ======== Closing Seaglass =========="

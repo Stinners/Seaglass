@@ -13,6 +13,7 @@
     <Compile Include="src/Cursor.fs" />
     <Compile Include="src/Markdown.fs" />
     <Compile Include="src/Note.fs" />
+    <Compile Include="src/Editor.fs" />
     <Compile Include="src/Program.fs" />
   </ItemGroup>
 

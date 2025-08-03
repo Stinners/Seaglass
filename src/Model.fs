@@ -33,9 +33,12 @@ module Model =
           text: string array
           scroll: int }
 
+    type Command = Editor
 
     type Model = 
         { fileTree: FileTree
           view: ViewType
           shutdown: bool 
-          note: OpenNote }
+          note: OpenNote
+          command : Option<Command>
+        }

@@ -23,7 +23,7 @@ module Markdown =
     let rec renderInlineElements (output : StringBuilder) (block : ContainerInline) =
 
         for elem in block do 
-            Log.Debug($"Markdown Inline {elem.GetType().Name}")
+            //Log.Debug($"Markdown Inline {elem.GetType().Name}")
 
             match elem with 
             | :? LiteralInline as literal -> build output (getSlice literal)
@@ -43,7 +43,7 @@ module Markdown =
 
 
     let private renderMarkdownBlock (block : Block) : string = 
-        Log.Debug($"Markdown Block: {block.GetType().Name}")
+        //Log.Debug($"Markdown Block: {block.GetType().Name}")
         let output = StringBuilder()
 
         match block with 
