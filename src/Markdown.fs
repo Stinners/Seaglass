@@ -21,9 +21,8 @@ module Markdown =
 
 
     let rec renderInlineElements (output : StringBuilder) (block : ContainerInline) =
-
         for elem in block do 
-            //Log.Debug($"Markdown Inline {elem.GetType().Name}")
+            Log.Debug($"Markdown Inline {elem.GetType().Name}")
 
             match elem with 
             | :? LiteralInline as literal -> build output (getSlice literal)
@@ -39,16 +38,22 @@ module Markdown =
         build output "[/]"
 
 
+    let private markupList output (list : ListBlock) = 
+        let bullet = list.BulletType
+        build output $"[red]{bullet}[/]"
+
+
     let private markupParagraph output (paragraph : ParagraphBlock) = renderInlineElements output paragraph.Inline
 
 
     let private renderMarkdownBlock (block : Block) : string = 
-        //Log.Debug($"Markdown Block: {block.GetType().Name}")
+        Log.Debug($"Markdown Block: {block.GetType().Name}")
         let output = StringBuilder()
 
         match block with 
         | :? HeadingBlock as heading -> markupHeader output heading
         | :? ParagraphBlock as paragraph -> markupParagraph output paragraph
+        | :? ListBlock as list -> markupList output list
         | _ -> ()
 
         output.ToString()
