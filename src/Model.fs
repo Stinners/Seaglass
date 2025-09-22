@@ -1,5 +1,7 @@
 namespace Seaglass 
 
+open Spectre.Console.Rendering
+
 module Model = 
 
     type FSFile = 
@@ -30,13 +32,13 @@ module Model =
     type OpenNote = 
         { name: string
           path: string 
-          text: string array
+          text: IRenderable array
           scroll: int }
 
     type Command = Editor
 
     type Model = 
-        { fileTree: FileTree
+        { filetree: FileTree
           view: ViewType
           shutdown: bool 
           note: OpenNote

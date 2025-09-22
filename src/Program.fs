@@ -7,6 +7,7 @@ open Spectre.Console
 open Serilog
 
 open Model
+open Utils
 
 module Main =
 
@@ -28,7 +29,7 @@ module Main =
 
     let initModel = 
         { view = Note 
-          fileTree = initFileTree
+          filetree = initFileTree
           shutdown = false
           note =  initNote 
           command = None }
@@ -53,8 +54,9 @@ module Main =
 
 
     let update model (input : ConsoleKeyInfo) =
+        let mods = getModifiers input
         match model.view with
-        | Note -> Note.update model input
+        | Note -> Note.update model input mods
         | Help -> Help.update model input
         | Search -> model
 
@@ -73,6 +75,7 @@ module Main =
 
     let rec renderLoop oldModel =
         let layout = render oldModel
+        AnsiConsole.Clear()
         AnsiConsole.Write(layout)
 
         let input = Console.ReadKey(true)
@@ -82,14 +85,6 @@ module Main =
             renderLoop (reset newModel)
         else 
             AnsiConsole.Clear()
-
-        (*
-        if not newModel.shutdown && Option.isNone model.command then
-            renderLoop newModel ctx
-        else 
-            Log.Information "Breaking render loop"
-        *)
-
 
 
     [<EntryPoint>]
