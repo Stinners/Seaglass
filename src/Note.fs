@@ -150,7 +150,7 @@ module ContentPane =
     
     //======================= Update ======================//
     
-    let updateContent (note : OpenNote) (input : ConsoleKeyInfo) (mods : ModifierKeys) (noteFocused : bool) =
+    let updateContent (note : OpenNote) (input : ConsoleKeyInfo) (_ : ModifierKeys) (noteFocused : bool) =
         //Log.Debug($"Note Input: {input.Key} | control: {control} | shift: {shift}") 
 
         match input.Key with

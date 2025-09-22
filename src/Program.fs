@@ -63,6 +63,7 @@ module Main =
 
     // Properties which we want to be true of the model at the start of every loop 
     let reset model =
+        AnsiConsole.Cursor.Show(false)
         { model with command = None }
     
 
@@ -75,7 +76,7 @@ module Main =
 
     let rec renderLoop oldModel =
         let layout = render oldModel
-        AnsiConsole.Clear()
+        AnsiConsole.Cursor.SetPosition(0,0)
         AnsiConsole.Write(layout)
 
         let input = Console.ReadKey(true)
@@ -83,9 +84,6 @@ module Main =
 
         if not newModel.shutdown then 
             renderLoop (reset newModel)
-        else 
-            AnsiConsole.Clear()
-
 
     [<EntryPoint>]
     let main _args =
@@ -93,9 +91,15 @@ module Main =
 
         Log.Information " ======== Starting Seaglass ========="
 
-        let model = initModel
-        renderLoop model
-        AnsiConsole.Clear()
+        try
+            let model = initModel
+            renderLoop model
+
+            // If the renderLoop crashes we want to make sure we don't clear the stack trace 
+            // so this doesn't go in the finally block
+            AnsiConsole.Clear()
+        finally
+            AnsiConsole.Cursor.Show(true)
 
         Log.Information " ======== Closing Seaglass =========="
 
