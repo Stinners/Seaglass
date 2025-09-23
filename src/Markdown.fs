@@ -46,7 +46,7 @@ module Markdown =
     let private markupParagraph output (paragraph : ParagraphBlock) = renderInlineElements output paragraph.Inline
 
 
-    let private renderMarkdownBlock (block : Block) : string = 
+    let private renderBlockElement (block : Block) : string = 
         Log.Debug($"Markdown Block: {block.GetType().Name}")
         let output = StringBuilder()
 
@@ -60,7 +60,8 @@ module Markdown =
 
 
     let parseMarkdown (text : string) = 
-        Markdown.Parse text 
-        |> Seq.map renderMarkdownBlock
+        let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().Build()
+        Markdown.Parse(text, pipeline)
+        |> Seq.map renderBlockElement
         |> Seq.toArray
 
