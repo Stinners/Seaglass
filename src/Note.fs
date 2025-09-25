@@ -227,7 +227,7 @@ module Note =
     let getNoteText (filepath : string): IRenderable array = 
         let text = File.ReadAllText filepath |> Markup.Escape
         if isMarkdownFile filepath then 
-            text |> Markdown.parseMarkdown |> Array.map (fun text -> Markup(text))
+            Markdown.parseMarkdown text
         else 
             [| Markup(text.EscapeMarkup()) |]
 
@@ -237,20 +237,22 @@ module Note =
         | "" -> name
         | noExtension -> noExtension
 
-    let openFile note file = 
-        { note with name = getNoteHeader file
-                    path = file.path
-                    text = getNoteText file.path
-                    scroll = 0 }
 
     let selectFile (model : Model) = 
         let filesystem = model.filetree.filesystem
         let focusedNode = Cursor.focusedRecord filesystem
 
         if focusedNode.root.IsFile then 
-            { model with note = openFile model.note focusedNode }
+            let note = { 
+                name  = getNoteHeader focusedNode
+                path = focusedNode.path
+                text = getNoteText focusedNode.path
+                scroll = 0 
+            }
+            { model with note = note }
         else 
             { model with filetree.filesystem = Cursor.toggleExpand filesystem }
+
 
     let update (model : Model) (input : ConsoleKeyInfo) (mods : ModifierKeys) =
         let isNoteFocused = not model.filetree.isFocused

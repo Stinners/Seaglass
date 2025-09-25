@@ -7,59 +7,82 @@ open Markdig
 open Markdig.Syntax;
 open Markdig.Syntax.Inlines;
 open Serilog
+open Spectre.Console
+open Spectre.Console.Rendering
 
 open Styles
 
 module Markdown = 
 
-    let private getSlice (elem : LiteralInline) = 
+    let private getInlineText (elem : LiteralInline) = 
         let start = elem.Content.Start
         let length = elem.Content.Length
-        elem.Content.Text.Substring(start, length)
+        Markup.Escape (elem.Content.Text.Substring(start, length))
 
+    // String builder helpers
     let private build (sb : StringBuilder) (text : string) = sb.Append(text) |> ignore
+    let private (>>=) (sb: StringBuilder) (text : string) = build sb text; sb
+    let private (<*>) (sb: StringBuilder) (func : StringBuilder -> unit) = func sb; sb
+    let buildMarkup (sb : StringBuilder) = Markup(sb.ToString())
 
 
-    let rec renderInlineElements (output : StringBuilder) (block : ContainerInline) =
+    // This takes a Container element and add it's text to the string builder - potentially including 
+    // Spectre markup
+    let rec renderInlineContainer (block : ContainerInline) (output : StringBuilder) =
         for elem in block do 
-            Log.Debug($"Markdown Inline {elem.GetType().Name}")
+            Log.Debug($"Markdown ContainerInline {elem.GetType().Name}")
 
             match elem with 
-            | :? LiteralInline as literal -> build output (getSlice literal)
-            | _ ->  raise (Exception("Unknown element"))
+            | :? LiteralInline as literal -> build output (getInlineText literal)
+            | :? LineBreakInline -> ()
+            | _ ->  raise (Exception($"Unknown element {elem.GetType()}"))
 
 
-    let private markupHeader output (header : HeadingBlock) = 
-        let hashes = String('#', header.Level)
-        let markup = markdownMarkup Header
-
-        build output $"{markup}{hashes} "
-        renderInlineElements output header.Inline
-        build output "[/]"
-
-
-    let private markupList output (list : ListBlock) = 
-        let bullet = list.BulletType
-        build output $"[red]{bullet}[/]"
+    let private markupHeader (header : HeadingBlock) = 
+        StringBuilder() 
+        >>= markdownMarkup Header
+        >>= (String('#', header.Level))
+        >>= " "
+        <*> renderInlineContainer header.Inline
+        >>= "[/]"
+        |> buildMarkup
 
 
-    let private markupParagraph output (paragraph : ParagraphBlock) = renderInlineElements output paragraph.Inline
+    let private markupParagraph (paragraph : ParagraphBlock) = 
+        StringBuilder() 
+        <*> renderInlineContainer paragraph.Inline
+        |> buildMarkup
 
 
-    let private renderBlockElement (block : Block) : string = 
+    let rec private markupList (list : ListBlock) = 
+        let grid = Grid().AddColumn().AddColumn()
+        let bulletStr = list.BulletType.ToString()
+        
+        for row in list do 
+            let bullet = Markup(bulletStr) :> IRenderable
+            grid.AddRow([|bullet; renderBlockElement row|]) |> ignore
+
+        grid
+
+
+    and markupContainerBlock (block: ContainerBlock) = Seq.map renderBlockElement block |> Rows
+
+
+    and private renderBlockElement (block : Block) : IRenderable = 
         Log.Debug($"Markdown Block: {block.GetType().Name}")
-        let output = StringBuilder()
 
         match block with 
-        | :? HeadingBlock as heading -> markupHeader output heading
-        | :? ParagraphBlock as paragraph -> markupParagraph output paragraph
-        | :? ListBlock as list -> markupList output list
-        | _ -> ()
+        | :? HeadingBlock as heading -> markupHeader heading
+        | :? ParagraphBlock as paragraph -> markupParagraph paragraph
+        | :? ListBlock as list -> markupList list
+        | :? ListItemBlock as block -> markupContainerBlock block
+        | :? ContainerBlock as block -> markupContainerBlock block
+        | :? ThematicBreakBlock -> Rule()
+        | _ -> Markup($"Unknown Block: {block.GetType()}")
 
-        output.ToString()
 
 
-    let parseMarkdown (text : string) = 
+    let parseMarkdown (text : string): IRenderable array = 
         let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().Build()
         Markdown.Parse(text, pipeline)
         |> Seq.map renderBlockElement
