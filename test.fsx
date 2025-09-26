@@ -6,7 +6,7 @@ open Markdig.Syntax.Inlines
 
 open System.IO
 
-let mdFile = "resources/lists.md"
+let mdFile = "resources/inline_effects.md"
 
 let displayMd level (md: MarkdownObject) =
     let indent = String.replicate level "  "
@@ -43,9 +43,7 @@ let rec displayBlock level (md: MarkdownObject) =
     | :? LiteralInline as elem ->
         displayInline nextLevel elem
 
-    // Onlye tracked if we're considering trivia, can probable ignore in rendering
-    | :? LineBreakInline as linebreak -> 
-        displayMd nextLevel linebreak
+    | :? LineBreakInline -> ()
 
     | _ -> printfn "Unexpected Node type %A" (md.GetType())
 
@@ -56,7 +54,7 @@ let main _ =
 
     printfn "%s\n=========\n" mdText
 
-    let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().Build()
+    let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().UseEmphasisExtras().Build()
     let markdown = Markdown.Parse(mdText, pipeline)
 
     // At the top level a document is a sequence of blocks

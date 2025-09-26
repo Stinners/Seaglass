@@ -5,6 +5,7 @@ open System.Text
 
 open Markdig
 open Markdig.Syntax;
+open Markdig.Helpers
 open Markdig.Syntax.Inlines;
 open Serilog
 open Spectre.Console
@@ -14,27 +15,40 @@ open Styles
 
 module Markdown = 
 
-    let private getInlineText (elem : LiteralInline) = 
-        let start = elem.Content.Start
-        let length = elem.Content.Length
-        Markup.Escape (elem.Content.Text.Substring(start, length))
-
     // String builder helpers
     let private build (sb : StringBuilder) (text : string) = sb.Append(text) |> ignore
     let private (>>=) (sb: StringBuilder) (text : string) = build sb text; sb
     let private (<*>) (sb: StringBuilder) (func : StringBuilder -> unit) = func sb; sb
-    let buildMarkup (sb : StringBuilder) = Markup(sb.ToString())
+    let private buildMarkup (sb : StringBuilder) = (sb.ToString().TrimEnd(Environment.NewLine.ToCharArray())) |> Markup
+    
+    let private getSliceText (slice: StringSlice) = 
+        if obj.ReferenceEquals(slice.Text, null) then ""
+        else slice.Text.Substring(slice.Start, slice.Length)
 
 
-    // This takes a Container element and add it's text to the string builder - potentially including 
+    let private getInlineText (elem : LiteralInline) = elem.Content |> getSliceText |> Markup.Escape
+
+    let rec private renderEmphasis (sb: StringBuilder) (elem: EmphasisInline) = 
+        Log.Debug($"Emphasis: {elem.DelimiterChar} | {elem.DelimiterCount}")
+        let markup = Styles.emphasisMarkup elem.DelimiterChar elem.DelimiterCount
+        let markupEnd = if markup <> "" then "[/]" else ""
+        sb 
+        >>= markup
+        <*> renderInlineContainer elem 
+        >>= markupEnd
+        |> ignore
+
+
+    // This takes a Container element and adds it's text to the string builder - potentially including 
     // Spectre markup
-    let rec renderInlineContainer (block : ContainerInline) (output : StringBuilder) =
+    and private renderInlineContainer (block : ContainerInline) (output : StringBuilder) =
         for elem in block do 
             Log.Debug($"Markdown ContainerInline {elem.GetType().Name}")
 
             match elem with 
             | :? LiteralInline as literal -> build output (getInlineText literal)
-            | :? LineBreakInline -> ()
+            | :? LineBreakInline -> build output (Environment.NewLine)
+            | :? EmphasisInline as emph -> renderEmphasis output emph
             | _ ->  raise (Exception($"Unknown element {elem.GetType()}"))
 
 
@@ -53,21 +67,34 @@ module Markdown =
         <*> renderInlineContainer paragraph.Inline
         |> buildMarkup
 
+    let getBullet defaultBullet (row : Block): IRenderable = 
+        let row = row :?> ListItemBlock
+        let text = if row.SourceBullet.IsEmpty then defaultBullet
+                   else getSliceText row.SourceBullet + "."
+        Markup(text)
+
+
+    // We want to avoid line breaks at the end of blocks - because we handle those
+
 
     let rec private markupList (list : ListBlock) = 
         let grid = Grid().AddColumn().AddColumn()
-        let bulletStr = list.BulletType.ToString()
+        let defaultBullet = list.BulletType.ToString()
         
         for row in list do 
-            let bullet = Markup(bulletStr) :> IRenderable
+            let row = row :?> ListItemBlock
+            let bulletText = if row.SourceBullet.IsEmpty then defaultBullet
+                             else getSliceText row.SourceBullet + "."
+            let bullet = Markup(bulletText) :> IRenderable
             grid.AddRow([|bullet; renderBlockElement row|]) |> ignore
 
         grid
 
 
-    and markupContainerBlock (block: ContainerBlock) = Seq.map renderBlockElement block |> Rows
+    and private markupContainerBlock (block: ContainerBlock) = Seq.map renderBlockElement block |> Rows
 
 
+    // Handle top level blocks
     and private renderBlockElement (block : Block) : IRenderable = 
         Log.Debug($"Markdown Block: {block.GetType().Name}")
 
@@ -83,7 +110,7 @@ module Markdown =
 
 
     let parseMarkdown (text : string): IRenderable array = 
-        let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().Build()
+        let pipeline = MarkdownPipelineBuilder().EnableTrackTrivia().UseEmphasisExtras().Build()
         Markdown.Parse(text, pipeline)
         |> Seq.map renderBlockElement
         |> Seq.toArray

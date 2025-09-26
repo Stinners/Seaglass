@@ -173,8 +173,8 @@ module ContentPane =
         if note.name = "" then 
            Markup("Note Placeholder") |> Align.Center
         else 
-            let allBlocks = addLineBreaks (Markup("  ")) note.text[note.scroll..]
-            allBlocks
+            let rows = Utils.intersperse note.text[note.scroll..] (Markup(" ")) |> Seq.toArray
+            rows 
             |> fun rows -> Rows(rows)
             |> Align.Left
 
